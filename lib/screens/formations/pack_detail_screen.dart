@@ -278,14 +278,34 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                         color: AppTheme.textSecondary,
                       ),
                     ),
-                    Text(
-                      Formatters.formatAmount(widget.pack.price),
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.accentColor,
+                    if (widget.pack.isOnPromotion) ...[
+                      // Prix barré (prix original)
+                      Text(
+                        Formatters.formatAmount(widget.pack.price),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppTheme.textSecondary,
+                          decoration: TextDecoration.lineThrough,
+                        ),
                       ),
-                    ),
+                      // Prix promotionnel
+                      Text(
+                        Formatters.formatAmount(widget.pack.currentPrice),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        Formatters.formatAmount(widget.pack.price),
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
                   ],
                 )
               else
@@ -883,7 +903,7 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                   Icon(Icons.shopping_cart, color: Colors.white),
                   SizedBox(width: 8),
                   Text(
-                    'Acheter ${Formatters.formatAmount(widget.pack.price)}',
+                    'Acheter ${Formatters.formatAmount(widget.pack.currentPrice)}',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -984,7 +1004,7 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
 
   void _showPurchaseDialog() {
     final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    final canPurchase = walletProvider.balance >= widget.pack.price;
+    final canPurchase = walletProvider.balance >= widget.pack.currentPrice;
 
     showDialog(
       context: context,
@@ -997,7 +1017,17 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
           children: [
             Text('Pack: ${widget.pack.name}'),
             SizedBox(height: 8),
-            Text('Prix: ${Formatters.formatAmount(widget.pack.price)}'),
+            if (widget.pack.isOnPromotion) ...[
+              Text('Prix: ${Formatters.formatAmount(widget.pack.currentPrice)}'),
+              Text(
+                'Prix original: ${Formatters.formatAmount(widget.pack.price)}',
+                style: TextStyle(
+                  decoration: TextDecoration.lineThrough,
+                  color: Colors.grey,
+                ),
+              ),
+            ] else
+              Text('Prix: ${Formatters.formatAmount(widget.pack.price)}'),
             SizedBox(height: 8),
             Text('Solde actuel: ${Formatters.formatAmount(walletProvider.balance)}'),
             SizedBox(height: 16),
