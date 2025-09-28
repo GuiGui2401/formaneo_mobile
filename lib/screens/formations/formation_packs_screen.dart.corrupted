@@ -1,0 +1,487 @@
+import 'package:flutter/material.dart';
+import 'package:formaneo/models/formation.dart';
+import 'package:provider/provider.dart';
+import '../../config/theme.dart';
+import '../../providers/formation_provider.dart';
+import '../../models/formation_pack.dart';
+import '../../models/module.dart';
+import '../../utils/formatters.dart';
+import 'pack_detail_screen.dart';
+
+class FormationPacksScreen extends StatefulWidget {
+  @override
+  _FormationPacksScreenState createState() => _FormationPacksScreenState();
+}
+
+class _FormationPacksScreenState extends State<FormationPacksScreen> {
+  bool _isLoading = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadPacks();
+  }
+  
+  Future<void> _loadPacks() async {
+    setState(() => _isLoading = true);
+    
+    final provider = Provider.of<FormationProvider>(context, listen: false);
+    await provider.loadFormationPacks();
+    
+    setState(() => _isLoading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final formationProvider = Provider.of<FormationProvider>(context);
+    
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: Text('Packs de Formations'),
+        elevation: 0,
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadPacks,
+              child: SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    SizedBox(height: AppSpacing.lg),
+                    _buildPacksList(formationProvider.formationPacks),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppBorderRadius.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.school, color: Colors.white, size: 32),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Formations Premium',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Accédez à des packs complets',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: AppSpacing.md),
+          Container(
+            padding: EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(AppBorderRadius.sm),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.white, size: 16),
+                SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    '15% de cashback à la fin de toutes les formation complétées d\'un pack !\n'
+                    'Paiement 100% sécurisé !\n'
+                    'Garantie de remboursement de 14 jours !',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPacksList(List<FormationPack> packs) {
+    // Créer les deux packs par défaut si la liste est vide
+    if (packs.isEmpty) {
+      packs = _getDefaultPacks();
+    }
+    
+    return Column(
+      children: packs.map((pack) => _buildPackCard(pack)).toList(),
+    );
+  }
+
+  Widget _buildPackCard(FormationPack pack) {
+    return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PackDetailScreen(pack: pack),
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          pack.name.contains('Dropskills') 
+                              ? Colors.purple 
+                              : Colors.orange,
+                          pack.name.contains('Dropskills') 
+                              ? Colors.purple.withOpacity(0.7) 
+                              : Colors.orange.withOpacity(0.7),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.play_circle_fill,
+                          color: Colors.white,
+                          size: 64,
+                        ),
+                        SizedBox(height: AppSpacing.md),
+                        Text(
+                          pack.name,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (pack.isPurchased)
+                    Positioned(
+                      top: AppSpacing.md,
+                      right: AppSpacing.md,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentColor,
+                          borderRadius: BorderRadius.circular(AppBorderRadius.xl),
+                        ),
+                        child: Text(
+                          'Acheté',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                          child: Icon(
+                            Icons.person,
+                            size: 16,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                        SizedBox(width: AppSpacing.sm),
+                        Text(
+                          'Par ${pack.author}',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: AppSpacing.md),
+                    Text(
+                      pack.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textPrimary,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        _buildInfoChip(
+                          Icons.video_library,
+                          '${pack.formations.length} formations',
+                        ),
+                        SizedBox(width: AppSpacing.md),
+                        _buildInfoChip(
+                          Icons.access_time,
+                          Formatters.formatDuration(pack.totalDuration),
+                        ),
+                        Spacer(),
+                        if (!pack.isPurchased)
+                          Text(
+                            Formatters.formatAmount(pack.price),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.accentColor,
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(AppBorderRadius.md),
+                            ),
+                            child: Row(
+                              children: [
+                                CircularProgressIndicator(
+                                  value: pack.completionPercentage / 100,
+                                  strokeWidth: 2,
+                                  backgroundColor: Colors.grey[300],
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppTheme.primaryColor,
+                                  ),
+                                ),
+                                SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  '${pack.completionPercentage.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (pack.isPurchased) ...[
+                      SizedBox(height: AppSpacing.md),
+                      LinearProgressIndicator(
+                        value: pack.completionPercentage / 100,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+                      ),
+                      SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '${pack.completedFormationsCount}/${pack.formations.length} formations complétées',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String label) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(AppBorderRadius.sm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppTheme.textSecondary),
+          SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<FormationPack> _getDefaultPacks() {
+    return [
+      FormationPack(
+        id: '1',
+        name: 'Dropskills - Pack de Formations',
+        slug: 'dropskills-pack-formations',
+        author: 'Cédric D.',
+        description: 'Pack complet de 27 formations sur le dropshipping, e-commerce et marketing digital. Apprenez les stratégies qui fonctionnent vraiment.',
+        thumbnailUrl: '',
+        price: 50000.00,
+        formations: _getDropskillsFormations(),
+        totalDuration: 2400,
+        rating: 4.8,
+        studentsCount: 1250,
+        formationsCount: 27,
+        isFeatured: true,
+        isActive: true,
+        order: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      FormationPack(
+        id: '2',
+        name: 'Business Mastery - Pack Complet',
+        slug: 'business-mastery-pack-complet',
+        author: 'Jonathan G.',
+        description: '15 formations complètes pour maîtriser le business en ligne : dropshipping, affiliation, closing, publicité, coaching et plus.',
+        thumbnailUrl: '',
+        price: 45000.00,
+        formations: _getBusinessMasteryFormations(),
+        totalDuration: 1800,
+        rating: 4.9,
+        studentsCount: 890,
+        formationsCount: 15,
+        isFeatured: true,
+        isActive: true,
+        order: 2,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  List<Formation> _getDropskillsFormations() {
+    // Retourner 27 formations pour le pack Dropskills
+    List<Formation> formations = [];
+    final titles = [
+      'Introduction au Dropshipping',
+      'Analyse de marché avancée',
+      'Sélection de produits gagnants',
+      'Création de boutique Shopify optimisée',
+      'Facebook Ads Mastery',
+      'Google Ads pour E-commerce',
+      'TikTok Ads Strategy',
+      'Email Marketing Automation',
+      'Copywriting pour convertir',
+      'Gestion des fournisseurs',
+      'Service client excellence',
+      'Optimisation du taux de conversion',
+      'Scaling et automatisation',
+      'Analyse des métriques',
+      'Gestion financière e-commerce',
+      'Branding et storytelling',
+      'Influencer Marketing',
+      'SEO pour e-commerce',
+      'Retargeting avancé',
+      'Upsell et cross-sell strategies',
+      'Gestion des retours et SAV',
+      'International dropshipping',
+      'Print on demand mastery',
+      'Subscription box business',
+      'Mobile commerce optimization',
+      'Voice commerce trends',
+      'Sustainable e-commerce',
+    ];
+    
+    for (int i = 0; i < titles.length; i++) {
+      formations.add(Formation(
+        id: 'dropskills_${i + 1}',
+        packId: '1',
+        title: titles[i],
+        description: 'Formation complète sur ${titles[i].toLowerCase()}',
+        duration: 90 + (i * 5),
+        order: i + 1,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        modules: _generateModules(5 + (i % 3)),
+        videoUrl: '',
+      ));
+    }
+    
+    return formations;
+  }
+
+  List<Formation> _getBusinessMasteryFormations() {\n    return [\n      Formation(\n        id: 'bm_1',\n        packId: '2',\n        title: 'Dropshipping 2025',\n        description: 'Maîtrisez le dropshipping de A à Z avec les dernières stratégies',\n        duration: 600,\n        order: 1,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(10),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_2',\n        packId: '2',\n        title: 'Affiliation 2025',\n        description: 'Devenez un expert en marketing d'affiliation',\n        duration: 420,\n        order: 2,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(7),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_3',\n        packId: '2',\n        title: 'Closing Mastery',\n        description: 'Techniques avancées de closing et de vente',\n        duration: 480,\n        order: 3,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(8),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_4',\n        packId: '2',\n        title: 'Google Ads 2025',\n        description: 'Publicité Google Ads pour maximiser votre ROI',\n        duration: 480,\n        order: 4,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(8),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_5',\n        packId: '2',\n        title: 'Coaching HT',\n        description: 'Créez et développez votre business de coaching',\n        duration: 540,\n        order: 5,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(9),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_6',\n        packId: '2',\n        title: 'Meta Ads',\n        description: 'Facebook et Instagram Ads pour votre business',\n        duration: 420,\n        order: 6,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(7),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_7',\n        packId: '2',\n        title: 'Personal Branding',\n        description: 'Construisez votre marque personnelle',\n        duration: 360,\n        order: 7,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(6),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_8',\n        packId: '2',\n        title: 'Tunnels de Vente 2.0',\n        description: 'Créez des tunnels de vente qui convertissent',\n        duration: 600,\n        order: 8,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(10),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_9',\n        packId: '2',\n        title: 'Créer un site Shopify qui convertit',\n        description: 'Boutique Shopify optimisée pour la conversion',\n        duration: 360,\n        order: 9,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(6),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_10',\n        packId: '2',\n        title: 'Marketing par e-mail',\n        description: 'Email marketing pour fidéliser et vendre',\n        duration: 480,\n        order: 10,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(8),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_11',\n        packId: '2',\n        title: 'Trouver un produit gagnant',\n        description: 'Méthodes pour identifier les produits rentables',\n        duration: 120,\n        order: 11,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(2),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_12',\n        packId: '2',\n        title: 'Capcut 2025',\n        description: 'Montage vidéo professionnel avec Capcut',\n        duration: 420,\n        order: 12,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(7),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_13',\n        packId: '2',\n        title: 'Canva 2025',\n        description: 'Design graphique professionnel avec Canva',\n        duration: 600,\n        order: 13,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(10),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_14',\n        packId: '2',\n        title: 'ChatGPT 2025',\n        description: 'IA et automatisation pour votre business',\n        duration: 300,\n        order: 14,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(5),\n        videoUrl: '',\n      ),\n      Formation(\n        id: 'bm_15',\n        packId: '2',\n        title: 'Growth Hacking',\n        description: 'Techniques de croissance rapide',\n        duration: 480,\n        order: 15,\n        isActive: true,\n        createdAt: DateTime.now(),\n        updatedAt: DateTime.now(),\n        modules: _generateModules(8),\n        videoUrl: '',\n      ),\n    ];\n  }
+
+  List<Module> _generateModules(int count) {
+    List<Module> modules = [];
+    for (int i = 0; i < count; i++) {
+      modules.add(Module(
+        id: 'module_${i + 1}',
+        formationId: '',
+        title: 'Module ${i + 1}',
+        duration: 30 + (i * 5),
+        order: i + 1,
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        videoUrl: '',
+      ));
+    }
+    return modules;
+  }
+}
