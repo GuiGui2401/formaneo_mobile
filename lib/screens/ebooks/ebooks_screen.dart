@@ -897,13 +897,13 @@ class _EbooksScreenState extends State<EbooksScreen> {
     final success = await provider.downloadEbook(ebook.id);
     if (success) {
       // Au lieu d'ouvrir dans le navigateur, on ouvre dans l'application
-      if (ebook.pdfUrl != null && ebook.pdfUrl!.isNotEmpty) {
+      if (ebook.fullPdfUrl != null && ebook.fullPdfUrl!.isNotEmpty) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PdfViewerScreen(
               title: ebook.title,
-              pdfUrl: ebook.pdfUrl!,
+              pdfUrl: ebook.fullPdfUrl!,
             ),
           ),
         );
@@ -943,7 +943,7 @@ class _EbooksScreenState extends State<EbooksScreen> {
   
   void _viewEbook(Ebook ebook) async {
     // Vérifier si l'ebook a une URL PDF
-    if (ebook.pdfUrl == null || ebook.pdfUrl!.isEmpty) {
+    if (ebook.fullPdfUrl == null || ebook.fullPdfUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -967,7 +967,7 @@ class _EbooksScreenState extends State<EbooksScreen> {
       MaterialPageRoute(
         builder: (context) => PdfViewerScreen(
           title: ebook.title,
-          pdfUrl: ebook.pdfUrl!,
+          pdfUrl: ebook.fullPdfUrl!,
         ),
       ),
     );

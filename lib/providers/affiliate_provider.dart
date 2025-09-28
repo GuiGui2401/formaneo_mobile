@@ -18,145 +18,72 @@ class AffiliateData {
 
   factory AffiliateData.fromJson(Map<String, dynamic> json) {
     return AffiliateData(
-      earnings: json['earnings'] is Map<String, dynamic>
-          ? json['earnings']
-          : {},
+      earnings: json['earnings'] is Map<String, dynamic> ? json['earnings'] : {},
       stats: json['stats'] is Map<String, dynamic> ? json['stats'] : {},
-      affiliateLink: json['affiliate_link'] is String
-          ? json['affiliate_link']
-          : '',
-      promoCode: json['promo_code'] is String ? json['promo_code'] : '',
-      affiliatesList: json['affiliates_list'] is List
-          ? json['affiliates_list']
-          : [],
+      affiliateLink: json['affiliate_link'] as String? ?? '',
+      promoCode: json['promo_code'] as String? ?? '',
+      affiliatesList: json['affiliates_list'] is List ? json['affiliates_list'] : [],
+    );
+  }
+}
+
+class DetailedStatsData {
+  final List<dynamic> topPerformers;
+  final Map<String, dynamic> chartData;
+
+  DetailedStatsData({required this.topPerformers, required this.chartData});
+
+  factory DetailedStatsData.fromJson(Map<String, dynamic> json) {
+    return DetailedStatsData(
+      topPerformers: json['top_performers'] as List? ?? [],
+      chartData: json['chart_data'] is Map<String, dynamic> ? json['chart_data'] : {},
     );
   }
 }
 
 class AffiliateProvider extends ChangeNotifier {
   AffiliateData? _affiliateData;
+  DetailedStatsData? _detailedStats;
   bool _isLoading = false;
   String? _error;
 
+  // Getters for main data
   AffiliateData? get affiliateData => _affiliateData;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Getters pour les propriétés individuelles avec valeurs par défaut
+  // Getters for detailed stats
+  DetailedStatsData? get detailedStats => _detailedStats;
+
+  // Getters for individual properties with default values
   Map<String, dynamic> get earnings => _affiliateData?.earnings ?? {};
   Map<String, dynamic> get stats => _affiliateData?.stats ?? {};
   String get affiliateLink => _affiliateData?.affiliateLink ?? '';
   String get promoCode => _affiliateData?.promoCode ?? '';
 
-  Future<void> loadDashboardData() async {
+  Future<void> loadAffiliateData() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final data = await AffiliateService.getDashboardData();
-      _affiliateData = AffiliateData.fromJson(data);
+      // Fetch dashboard and detailed stats in parallel for efficiency
+      final results = await Future.wait([
+        AffiliateService.getDashboardData(),
+        AffiliateService.getDetailedStats(),
+      ]);
+
+      _affiliateData = AffiliateData.fromJson(results[0] as Map<String, dynamic>);
+      _detailedStats = DetailedStatsData.fromJson(results[1] as Map<String, dynamic>);
+
     } catch (e) {
       _error = e.toString();
-      _affiliateData = null; // Réinitialiser les données en cas d'erreur
+      _affiliateData = null;
+      _detailedStats = null;
       print('Erreur lors du chargement des données d\'affiliation: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  Future<void> loadAffiliateData() async {
-    await loadDashboardData();
-  }
-
-  Future<void> loadAffiliates({int page = 1, int limit = 20}) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final data = await AffiliateService.getAffiliates(
-        page: page,
-        limit: limit,
-      );
-      // Mettre à jour les données des affiliés si nécessaire
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors du chargement des affiliés: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadCommissions({int page = 1, int limit = 20}) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final data = await AffiliateService.getCommissions(
-        page: page,
-        limit: limit,
-      );
-      // Mettre à jour les données des commissions si nécessaire
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors du chargement des commissions: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadDetailedStats() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final data = await AffiliateService.getDetailedStats();
-      // Mettre à jour les statistiques détaillées si nécessaire
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors du chargement des statistiques détaillées: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<String?> generateAffiliateLink({String? campaign}) async {
-    try {
-      final data = await AffiliateService.generateLink(campaign: campaign);
-      return data['link'];
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors de la génération du lien d\'affiliation: $e');
-      return null;
-    }
-  }
-
-  Future<List<dynamic>?> getBanners() async {
-    try {
-      final data = await AffiliateService.getBanners();
-      return data['banners'];
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors du chargement des bannières: $e');
-      return null;
-    }
-  }
-
-  Future<String?> downloadBanner(String id) async {
-    try {
-      final data = await AffiliateService.downloadBanner(id);
-      return data['download_url'];
-    } catch (e) {
-      _error = e.toString();
-      print('Erreur lors du téléchargement de la bannière: $e');
-      return null;
     }
   }
 }

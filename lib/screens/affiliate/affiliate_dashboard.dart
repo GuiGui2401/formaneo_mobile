@@ -14,6 +14,35 @@ class AffiliateDashboard extends StatefulWidget {
 }
 
 class _AffiliateDashboardState extends State<AffiliateDashboard> {
+  // Helper functions for safe data parsing
+  double _getSafeDouble(Map<String, dynamic>? map, String key) {
+    if (map == null || !map.containsKey(key)) {
+      return 0.0;
+    }
+    final value = map[key];
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  int _getSafeInt(Map<String, dynamic>? map, String key) {
+    if (map == null || !map.containsKey(key)) {
+      return 0;
+    }
+    final value = map[key];
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value) ?? 0;
+    }
+    return 0;
+  }
+
   String selectedChartType = 'bar'; // bar, line, area
   String selectedPeriod = 'Hebdomadaire'; // Journalière, Hebdomadaire, Mensuelle, Annuelle
   bool _isRefreshing = false;
@@ -160,7 +189,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
               SizedBox(height: AppSpacing.lg),
               _buildPromoBanners(),
               SizedBox(height: AppSpacing.lg),
-              _buildTopAffiliates(),
+              _buildTopAffiliates(affiliateProvider),
               SizedBox(height: AppSpacing.xxl),
             ],
           ),
@@ -305,27 +334,27 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
           children: [
             _buildStatCard(
               title: 'Aujourd\'hui',
-              amount: Formatters.formatAmount(provider.earnings?['today'] ?? 0),
+              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'today')),
               color: AppTheme.primaryColor,
               icon: Icons.today,
             ),
             _buildStatCard(
               title: 'Hier',
-              amount: Formatters.formatAmount(provider.earnings?['yesterday'] ?? 0),
+              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'yesterday')),
               color: Colors.orange,
               icon: Icons.history,
             ),
             _buildStatCard(
               title: 'Mois en cours',
               amount: Formatters.formatAmount(
-                provider.earnings?['currentMonth'] ?? 0,
+                _getSafeDouble(provider.earnings, 'currentMonth'),
               ),
               color: AppTheme.accentColor,
               icon: Icons.calendar_month,
             ),
             _buildStatCard(
               title: 'Mois dernier',
-              amount: Formatters.formatAmount(provider.earnings?['lastMonth'] ?? 0),
+              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'lastMonth')),
               color: AppTheme.secondaryColor,
               icon: Icons.calendar_today,
             ),
@@ -401,7 +430,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildTotalCommissionCard(AffiliateProvider provider) {
-    final affiliateCount = provider.stats?['totalAffiliates'] ?? 0;
+    final affiliateCount = _getSafeInt(provider.stats, 'totalAffiliates');
     final commissionRate = affiliateCount > 100
         ? AppConstants.level1CommissionPremium
         : AppConstants.level1CommissionBasic;
@@ -432,7 +461,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
           Icon(Icons.account_balance_wallet, color: Colors.white, size: 40),
           SizedBox(height: AppSpacing.md),
           Text(
-            Formatters.formatAmount(provider.earnings?['total'] ?? 0),
+            Formatters.formatAmount(_getSafeDouble(provider.earnings, 'total')),
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.bold,
@@ -487,7 +516,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
               ),
               _buildMiniStat(
                 'Ce mois',
-                '${provider.stats?['monthlyAffiliates'] ?? 0}',
+                '${_getSafeInt(provider.stats, 'monthlyAffiliates')}',
               ),
               Container(
                 width: 1,
@@ -525,6 +554,13 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildEarningsChart(AffiliateProvider provider) {
+    final chartData = provider.detailedStats?.chartData;
+
+    final bool isDataValid = chartData != null &&
+        chartData['datasets'] is List &&
+        (chartData['datasets'] as List).isNotEmpty &&
+        ((chartData['datasets'] as List)[0]['data'] as List).isNotEmpty;
+
     return Container(
       padding: EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -552,38 +588,29 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
           SizedBox(height: AppSpacing.md),
           Container(
             height: 200,
-            child: GestureDetector(
-              onTapDown: (details) => _handleChartTap(details.localPosition),
-              onTapCancel: () => setState(() => _showTooltip = false),
-              child: Stack(
-                children: [
-                  CustomPaint(
+            child: isDataValid
+                ? CustomPaint(
                     painter: selectedChartType == 'bar'
-                        ? BarChartPainter()
+                        ? BarChartPainter(chartData: chartData!)
                         : selectedChartType == 'line'
-                        ? LineChartPainter()
-                        : AreaChartPainter(),
+                            ? LineChartPainter(chartData: chartData!)
+                            : AreaChartPainter(chartData: chartData!),
                     size: Size.infinite,
-                  ),
-                  if (_showTooltip && _tapPosition != null)
-                    Positioned(
-                      left: _tapPosition!.dx - 50,
-                      top: _tapPosition!.dy - 80,
-                      child: _buildTooltip(),
+                  )
+                : Center(
+                    child: Text(
+                      'Données du graphique non disponibles.',
+                      style: TextStyle(color: AppTheme.textSecondary),
                     ),
-                ],
-              ),
-            ),
+                  ),
           ),
           SizedBox(height: AppSpacing.md),
           Wrap(
-            spacing: AppSpacing.sm,
+            spacing: AppSpacing.lg,
             runSpacing: AppSpacing.sm,
             children: [
-              _buildLegendItem('Clics sur lien', AppTheme.accentColor),
-              _buildLegendItem('Inscriptions', AppTheme.primaryColor),
-              _buildLegendItem('Achats', Colors.orange),
-              _buildLegendItem('Commissions', Colors.red),
+              _buildLegendItem('Commissions', AppTheme.primaryColor),
+              _buildLegendItem('Inscriptions', AppTheme.accentColor),
             ],
           ),
           SizedBox(height: AppSpacing.lg),
@@ -867,7 +894,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildAffiliateStats(AffiliateProvider provider) {
-    final monthlyAffiliates = provider.stats?['monthlyAffiliates'] ?? 0;
+    final monthlyAffiliates = _getSafeInt(provider.stats, 'monthlyAffiliates');
     final level = monthlyAffiliates > 100 ? 'Premium' : 'Basic';
 
     return Container(
@@ -1270,13 +1297,8 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
     );
   }
 
-  Widget _buildTopAffiliates() {
-    final topAffiliates = [
-      {'name': 'Marie K.', 'earnings': '45,000.00 FCFA', 'affiliates': 15},
-      {'name': 'Jean B.', 'earnings': '38,500.00 FCFA', 'affiliates': 12},
-      {'name': 'Sophie L.', 'earnings': '32,000.00 FCFA', 'affiliates': 10},
-      {'name': 'Vous', 'earnings': '25,000.00 FCFA', 'affiliates': 8},
-    ];
+  Widget _buildTopAffiliates(AffiliateProvider provider) {
+    final topAffiliates = provider.detailedStats?.topPerformers ?? [];
 
     return Container(
       padding: EdgeInsets.all(AppSpacing.md),
@@ -1299,85 +1321,78 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
             ],
           ),
           SizedBox(height: AppSpacing.lg),
-          ...topAffiliates.asMap().entries.map((entry) {
-            int index = entry.key;
-            Map<String, dynamic> affiliate = entry.value;
-            bool isCurrentUser = affiliate['name'] == 'Vous';
-
-            return Container(
-              margin: EdgeInsets.only(bottom: AppSpacing.sm),
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: isCurrentUser
-                    ? AppTheme.primaryColor.withOpacity(0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppBorderRadius.md),
-                border: isCurrentUser
-                    ? Border.all(color: AppTheme.primaryColor.withOpacity(0.3))
-                    : null,
+          if (topAffiliates.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
+                child: Text('Aucune donnée pour le moment.', style: TextStyle(color: AppTheme.textSecondary)),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: index < 3 ? Colors.amber : AppTheme.secondaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+            )
+          else
+            ...topAffiliates.asMap().entries.map((entry) {
+              int index = entry.key;
+              Map<String, dynamic> affiliate = entry.value;
+              final name = affiliate['name'] as String? ?? 'N/A';
+              final commission = (affiliate['total_commission'] is num) ? (affiliate['total_commission'] as num).toDouble() : (double.tryParse(affiliate['total_commission'].toString()) ?? 0.0);
+
+              return Container(
+                margin: EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.md),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: index < 3 ? Colors.amber.withOpacity(0.8) : AppTheme.secondaryColor,
+                        shape: BoxShape.circle,
                       ),
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          affiliate['name'],
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
                           style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: isCurrentUser
-                                ? AppTheme.primaryColor
-                                : AppTheme.textPrimary,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
                         ),
-                        Text(
-                          '${affiliate['affiliates']} affiliés',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    affiliate['earnings'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.accentColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (index < 3)
-                    Padding(
-                      padding: EdgeInsets.only(left: AppSpacing.sm),
-                      child: Icon(
-                        Icons.emoji_events,
-                        color: Colors.amber,
-                        size: 16,
                       ),
                     ),
-                ],
-              ),
-            );
-          }).toList(),
+                    SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      Formatters.formatAmount(commission),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.accentColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (index < 3)
+                      Padding(
+                        padding: EdgeInsets.only(left: AppSpacing.sm),
+                        child: Icon(
+                          Icons.emoji_events,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
         ],
       ),
     );
@@ -1604,84 +1619,80 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
 
 // Painters pour les graphiques
 class BarChartPainter extends CustomPainter {
+  final Map<String, dynamic> chartData;
+
+  BarChartPainter({required this.chartData});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
-    final barWidth = size.width / 16;
+    final datasets = (chartData['datasets'] as List?)
+        ?.map((d) => d['data'] as List? ?? [])
+        .toList();
+    
+    if (datasets == null || datasets.isEmpty || datasets[0].isEmpty) return;
 
-    final data = [
-      [15, 12, 8, 5],
-      [20, 15, 12, 8],
-      [18, 14, 10, 6],
-      [25, 20, 15, 10],
-      [22, 18, 13, 9],
-      [30, 25, 18, 12],
-      [28, 22, 16, 11],
-      [35, 28, 20, 14],
-      [32, 25, 18, 13],
-      [40, 32, 22, 16],
-      [38, 30, 21, 15],
-      [45, 35, 25, 18],
-    ];
+    final maxValue = datasets
+        .expand((list) => list)
+        .map((v) => v is num ? v : num.tryParse(v.toString()) ?? 0)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
 
-    final colors = [
-      AppTheme.accentColor,
-      AppTheme.primaryColor,
-      Colors.orange,
-      Colors.red,
-    ];
+    final double effectiveMaxValue = maxValue == 0 ? 1 : maxValue;
+    final barWidth = size.width / (datasets[0].length * 1.2);
+    final colors = [AppTheme.primaryColor, AppTheme.accentColor, Colors.orange, Colors.red];
 
-    for (int week = 0; week < data.length; week++) {
-      for (int bar = 0; bar < data[week].length; bar++) {
-        paint.color = colors[bar];
-        final barHeight = (data[week][bar] / 50.0) * size.height;
-        final x = week * barWidth + bar * (barWidth / 4);
-        final rect = Rect.fromLTWH(
-          x,
-          size.height - barHeight,
-          barWidth / 4 - 1,
-          barHeight,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, Radius.circular(2)),
-          paint,
-        );
+    for (int i = 0; i < datasets[0].length; i++) {
+      for (int j = 0; j < datasets.length; j++) {
+        final value = (datasets[j][i] is num ? datasets[j][i] : num.tryParse(datasets[j][i].toString()) ?? 0).toDouble();
+        paint.color = colors[j % colors.length];
+        final barHeight = (value / effectiveMaxValue) * size.height;
+        final x = i * (barWidth * datasets.length) + j * barWidth;
+        final rect = Rect.fromLTWH(x, size.height - barHeight, barWidth - 2, barHeight);
+        canvas.drawRRect(RRect.fromRectAndRadius(rect, Radius.circular(2)), paint);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant BarChartPainter oldDelegate) => oldDelegate.chartData != chartData;
 }
 
 class LineChartPainter extends CustomPainter {
+  final Map<String, dynamic> chartData;
+
+  LineChartPainter({required this.chartData});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
-    final data = [
-      [15, 20, 18, 25, 22, 30, 28, 35, 32, 40, 38, 45],
-      [12, 15, 14, 20, 18, 25, 22, 28, 25, 32, 30, 35],
-      [8, 12, 10, 15, 13, 18, 16, 20, 18, 22, 21, 25],
-      [5, 8, 6, 10, 9, 12, 11, 14, 13, 16, 15, 18],
-    ];
+    final datasets = (chartData['datasets'] as List?)
+        ?.map((d) => d['data'] as List? ?? [])
+        .toList();
+    
+    if (datasets == null || datasets.isEmpty || datasets[0].isEmpty) return;
 
-    final colors = [
-      AppTheme.accentColor,
-      AppTheme.primaryColor,
-      Colors.orange,
-      Colors.red,
-    ];
+    final maxValue = datasets
+        .expand((list) => list)
+        .map((v) => v is num ? v : num.tryParse(v.toString()) ?? 0)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
 
-    for (int line = 0; line < data.length; line++) {
-      paint.color = colors[line];
+    final double effectiveMaxValue = maxValue == 0 ? 1 : maxValue;
+    final colors = [AppTheme.primaryColor, AppTheme.accentColor, Colors.orange, Colors.red];
+    final pointCount = datasets[0].length;
+
+    for (int j = 0; j < datasets.length; j++) {
+      paint.color = colors[j % colors.length];
       final path = Path();
 
-      for (int i = 0; i < data[line].length; i++) {
-        final x = (i / (data[line].length - 1)) * size.width;
-        final y = size.height - (data[line][i] / 50.0) * size.height;
+      for (int i = 0; i < pointCount; i++) {
+        final value = (datasets[j][i] is num ? datasets[j][i] : num.tryParse(datasets[j][i].toString()) ?? 0).toDouble();
+        final x = (i / (pointCount - 1)) * size.width;
+        final y = size.height - (value / effectiveMaxValue) * size.height;
 
         if (i == 0) {
           path.moveTo(x, y);
@@ -1689,53 +1700,60 @@ class LineChartPainter extends CustomPainter {
           path.lineTo(x, y);
         }
       }
-
       canvas.drawPath(path, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant LineChartPainter oldDelegate) => oldDelegate.chartData != chartData;
 }
 
 class AreaChartPainter extends CustomPainter {
+  final Map<String, dynamic> chartData;
+
+  AreaChartPainter({required this.chartData});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
 
-    final data = [
-      [15, 20, 18, 25, 22, 30, 28, 35, 32, 40, 38, 45],
-      [12, 15, 14, 20, 18, 25, 22, 28, 25, 32, 30, 35],
-      [8, 12, 10, 15, 13, 18, 16, 20, 18, 22, 21, 25],
-      [5, 8, 6, 10, 9, 12, 11, 14, 13, 16, 15, 18],
-    ];
+    final datasets = (chartData['datasets'] as List?)
+        ?.map((d) => d['data'] as List? ?? [])
+        .toList();
+    
+    if (datasets == null || datasets.isEmpty || datasets[0].isEmpty) return;
 
+    final maxValue = datasets
+        .expand((list) => list)
+        .map((v) => v is num ? v : num.tryParse(v.toString()) ?? 0)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
+
+    final double effectiveMaxValue = maxValue == 0 ? 1 : maxValue;
     final colors = [
-      AppTheme.accentColor.withOpacity(0.3),
-      AppTheme.primaryColor.withOpacity(0.3),
+      AppTheme.primaryColor.withOpacity(0.4),
+      AppTheme.accentColor.withOpacity(0.4),
       Colors.orange.withOpacity(0.3),
-      Colors.red.withOpacity(0.3),
+      Colors.red.withOpacity(0.3)
     ];
+    final pointCount = datasets[0].length;
 
-    for (int area = data.length - 1; area >= 0; area--) {
-      paint.color = colors[area];
-      final path = Path();
+    for (int j = 0; j < datasets.length; j++) {
+      paint.color = colors[j % colors.length];
+      final path = Path()..moveTo(0, size.height);
 
-      path.moveTo(0, size.height);
-
-      for (int i = 0; i < data[area].length; i++) {
-        final x = (i / (data[area].length - 1)) * size.width;
-        final y = size.height - (data[area][i] / 50.0) * size.height;
+      for (int i = 0; i < pointCount; i++) {
+        final value = (datasets[j][i] is num ? datasets[j][i] : num.tryParse(datasets[j][i].toString()) ?? 0).toDouble();
+        final x = (i / (pointCount - 1)) * size.width;
+        final y = size.height - (value / effectiveMaxValue) * size.height;
         path.lineTo(x, y);
       }
-
       path.lineTo(size.width, size.height);
       path.close();
-
       canvas.drawPath(path, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant AreaChartPainter oldDelegate) => oldDelegate.chartData != chartData;
 }
