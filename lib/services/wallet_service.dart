@@ -84,22 +84,33 @@ class WalletService {
     }
   }
 
-  // Effectuer un dépôt
+  // Effectuer un dépôt via CinetPay
   static Future<Map<String, dynamic>> deposit(
-    double amount,
-  ) async {
+    double amount, {
+    String? phoneNumber,
+  }) async {
     try {
+      final requestData = <String, dynamic>{'amount': amount};
+      
+      // Ajouter le numéro de téléphone si fourni
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        requestData['phone_number'] = phoneNumber;
+      }
+      
       final response = await ApiService.post(
-        '${ApiConfig.walletEndpoint}/deposit',
-        {'amount': amount},
+        '/api/v1/cinetpay/deposit/initiate', // Endpoint correct sans baseUrl
+        requestData,
       );
 
       return {
         'success': response['success'] == true,
         'transaction_id': response['transaction_id'],
+        'payment_url': response['payment_url'],
+        'payment_token': response['payment_token'],
       };
     } catch (e) {
-      return {'success': false};
+      print('Erreur lors de l\'initiation du paiement CinetPay: $e');
+      return {'success': false, 'message': e.toString()};
     }
   }
 

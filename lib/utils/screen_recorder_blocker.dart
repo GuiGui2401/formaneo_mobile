@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 class ScreenRecorderBlocker {
@@ -6,6 +7,12 @@ class ScreenRecorderBlocker {
   
   // Activer la protection contre l'enregistrement d'écran
   static Future<void> enableSecureMode() async {
+    // En mode debug, ne pas activer la protection pour éviter les erreurs
+    if (kDebugMode) {
+      print('Mode debug: Protection d\'écran désactivée');
+      return;
+    }
+    
     try {
       if (Platform.isAndroid) {
         await _channel.invokeMethod('enableSecureMode');
@@ -20,6 +27,11 @@ class ScreenRecorderBlocker {
   
   // Désactiver la protection (pour certains écrans si nécessaire)
   static Future<void> disableSecureMode() async {
+    if (kDebugMode) {
+      print('Mode debug: Protection d\'écran désactivée');
+      return;
+    }
+    
     try {
       if (Platform.isAndroid) {
         await _channel.invokeMethod('disableSecureMode');
@@ -33,6 +45,10 @@ class ScreenRecorderBlocker {
   
   // Vérifier si l'enregistrement d'écran est actif (iOS uniquement)
   static Future<bool> isScreenRecording() async {
+    if (kDebugMode) {
+      return false; // En mode debug, pas d'enregistrement détecté
+    }
+    
     try {
       if (Platform.isIOS) {
         final bool isRecording = await _channel.invokeMethod('isScreenRecording');
@@ -47,6 +63,11 @@ class ScreenRecorderBlocker {
   
   // Activer la protection pour les vidéos de formation
   static Future<void> protectVideoContent() async {
+    if (kDebugMode) {
+      print('Mode debug: Protection vidéo désactivée');
+      return;
+    }
+    
     try {
       await _channel.invokeMethod('protectVideoContent');
     } catch (e) {

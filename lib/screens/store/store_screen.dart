@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../utils/formatters.dart';
+import '../../services/store_service.dart';
+import '../../services/formation_service.dart';
+import '../../models/formation_pack.dart';
+import '../formations/pack_detail_screen.dart';
 
 class StoreScreen extends StatefulWidget {
   @override
@@ -9,69 +13,43 @@ class StoreScreen extends StatefulWidget {
 
 class _StoreScreenState extends State<StoreScreen> {
   String selectedCategory = 'all';
+  List<Map<String, dynamic>> storeItems = [];
+  bool isLoading = true;
+  String? errorMessage;
 
-  final List<Map<String, dynamic>> storeItems = [
-    {
-      'id': '1',
-      'name': 'Pack Formations Dropskills',
-      'category': 'formations',
-      'price': 50000.00,
-      'description': '27 formations complètes',
-      'icon': Icons.school,
-      'color': Colors.purple,
-      'badge': 'Best Seller',
-    },
-    {
-      'id': '2',
-      'name': 'Pack Business Mastery',
-      'category': 'formations',
-      'price': 45000.00,
-      'description': '15 formations business',
-      'icon': Icons.business,
-      'color': Colors.orange,
-      'badge': 'Populaire',
-    },
-    {
-      'id': '3',
-      'name': 'Pack 10 Quiz Premium',
-      'category': 'quiz',
-      'price': 5000.00,
-      'description': '10 quiz supplémentaires',
-      'icon': Icons.quiz,
-      'color': AppTheme.primaryColor,
-      'badge': null,
-    },
-    {
-      'id': '4',
-      'name': 'Pack 25 Quiz Premium',
-      'category': 'quiz',
-      'price': 10000.00,
-      'description': '25 quiz + bonus 5 gratuits',
-      'icon': Icons.quiz,
-      'color': AppTheme.primaryColor,
-      'badge': 'Économisez 20%',
-    },
-    {
-      'id': '5',
-      'name': 'Boost Affiliation Pro',
-      'category': 'tools',
-      'price': 15000.00,
-      'description': 'Outils marketing avancés',
-      'icon': Icons.rocket_launch,
-      'color': AppTheme.accentColor,
-      'badge': 'Nouveau',
-    },
-    {
-      'id': '6',
-      'name': 'Bibliothèque Ebooks',
-      'category': 'ebooks',
-      'price': 0.00,
-      'description': 'Accédez à tous nos ebooks',
-      'icon': Icons.menu_book,
-      'color': Colors.teal,
-      'badge': 'Nouveau',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadStoreData();
+  }
+
+  Future<void> _loadStoreData() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final items = await StoreService.getStoreItems();
+      
+      // Debug logs
+      print('📦 Total items loaded: ${items.length}');
+      for (var item in items) {
+        print('Item: ${item['name']} - Price: ${item['price']} - Original: ${item['original_price']} - Promo: ${item['is_on_promotion']}');
+      }
+      
+      setState(() {
+        storeItems = items;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Error loading store data: $e');
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,19 +91,89 @@ class _StoreScreenState extends State<StoreScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            _buildCategories(),
-            _buildFeaturedSection(),
-            _buildProductGrid(),
-            SizedBox(height: AppSpacing.xxl),
-          ],
-        ),
-      ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error, size: 64, color: AppTheme.errorColor),
+                      SizedBox(height: 16),
+                      Text('Erreur de chargement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 8),
+                      Text(errorMessage!, textAlign: TextAlign.center),
+                      SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadStoreData,
+                        child: Text('Réessayer'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadStoreData,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(),
+                        _buildCategories(),
+                        _buildFeaturedSection(),
+                        _buildProductGrid(),
+                        SizedBox(height: AppSpacing.xxl),
+                      ],
+                    ),
+                  ),
+                ),
     );
+  }
+
+  IconData _getIconForCategory(String iconName) {
+    switch (iconName) {
+      case 'apps':
+        return Icons.apps;
+      case 'school':
+        return Icons.school;
+      case 'quiz':
+        return Icons.quiz;
+      case 'menu_book':
+        return Icons.menu_book;
+      case 'build':
+        return Icons.build;
+      default:
+        return Icons.category;
+    }
+  }
+
+  Color _getColorForItem(String colorName) {
+    switch (colorName) {
+      case 'purple':
+        return Colors.purple;
+      case 'orange':
+        return Colors.orange;
+      case 'teal':
+        return Colors.teal;
+      default:
+        return AppTheme.primaryColor;
+    }
+  }
+
+  IconData _getIconForItem(String iconName) {
+    switch (iconName) {
+      case 'school':
+        return Icons.school;
+      case 'business':
+        return Icons.business;
+      case 'quiz':
+        return Icons.quiz;
+      case 'rocket_launch':
+        return Icons.rocket_launch;
+      case 'menu_book':
+        return Icons.menu_book;
+      default:
+        return Icons.category;
+    }
   }
 
   Widget _buildHeader() {
@@ -188,13 +236,7 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   Widget _buildCategories() {
-    final categories = [
-      {'id': 'all', 'name': 'Tout', 'icon': Icons.apps},
-      {'id': 'formations', 'name': 'Formations', 'icon': Icons.school},
-      {'id': 'quiz', 'name': 'Quiz', 'icon': Icons.quiz},
-      {'id': 'ebooks', 'name': 'Ebooks', 'icon': Icons.menu_book},
-      {'id': 'tools', 'name': 'Outils', 'icon': Icons.build},
-    ];
+    final categories = StoreService.getCategories();
 
     return Container(
       height: 100,
@@ -206,9 +248,10 @@ class _StoreScreenState extends State<StoreScreen> {
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = selectedCategory == category['id'];
+          final isLocked = category['locked'] == true;
           
           return GestureDetector(
-            onTap: () {
+            onTap: isLocked ? null : () {
               setState(() {
                 selectedCategory = category['id'] as String;
               });
@@ -220,29 +263,58 @@ class _StoreScreenState extends State<StoreScreen> {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor : Colors.white,
+                color: isLocked 
+                    ? Colors.grey[100]
+                    : (isSelected ? AppTheme.primaryColor : Colors.white),
                 borderRadius: BorderRadius.circular(AppBorderRadius.lg),
                 border: Border.all(
-                  color: isSelected ? AppTheme.primaryColor : Color(0xFFE2E8F0),
+                  color: isLocked 
+                      ? Colors.grey[300]!
+                      : (isSelected ? AppTheme.primaryColor : Color(0xFFE2E8F0)),
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  Icon(
-                    category['icon'] as IconData,
-                    color: isSelected ? Colors.white : AppTheme.textSecondary,
-                    size: 24,
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _getIconForCategory(category['icon'] as String),
+                        color: isLocked 
+                            ? Colors.grey[400]
+                            : (isSelected ? Colors.white : AppTheme.textSecondary),
+                        size: 24,
+                      ),
+                      SizedBox(height: AppSpacing.sm),
+                      Text(
+                        category['name'] as String,
+                        style: TextStyle(
+                          color: isLocked 
+                              ? Colors.grey[500]
+                              : (isSelected ? Colors.white : AppTheme.textSecondary),
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: AppSpacing.sm),
-                  Text(
-                    category['name'] as String,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : AppTheme.textSecondary,
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  if (isLocked)
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: Container(
+                        padding: EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[600],
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.lock,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -253,88 +325,193 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   Widget _buildFeaturedSection() {
+    // Find only items with active promotion
+    final promotedItems = storeItems.where((item) {
+      final isOnPromotion = item['is_on_promotion'] == true;
+      final hasPromoPrice = item['promotion_price'] != null && item['promotion_price'] > 0;
+      return isOnPromotion && hasPromoPrice;
+    }).toList();
+
+    print('🎯 Found ${promotedItems.length} items with active promotions');
+
+    if (promotedItems.isEmpty) {
+      return SizedBox.shrink();
+    }
+
     return Container(
-      margin: EdgeInsets.all(AppSpacing.md),
-      padding: EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.purple, Colors.purple.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppBorderRadius.lg),
-      ),
-      child: Row(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(AppBorderRadius.sm),
-                  ),
-                  child: Text(
-                    'OFFRE LIMITÉE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Pack Dropskills',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '27 formations complètes',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.md),
-                Row(
+          Text(
+            'Promotions en cours',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 12),
+          SizedBox(
+            height: 200,
+            child: _buildPromoCarousel(promotedItems),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  Widget _buildPromoCarousel(List<Map<String, dynamic>> promotedItems) {
+    return PageView.builder(
+      controller: PageController(viewportFraction: 0.9),
+      itemCount: promotedItems.length,
+      itemBuilder: (context, index) => _buildPromoCard(promotedItems[index], index),
+    );
+  }
+
+  Widget _buildPromoCard(Map<String, dynamic> item, int index) {
+    final originalPrice = (item['original_price'] ?? 0.0).toDouble();
+    final promoPrice = (item['promotion_price'] ?? 0.0).toDouble();
+    final discount = originalPrice > 0 
+        ? (((originalPrice - promoPrice) / originalPrice) * 100).round()
+        : 0;
+    
+    final gradientColors = [
+      [Colors.purple, Colors.purple.withOpacity(0.8)],
+      [Colors.orange, Colors.orange.withOpacity(0.8)],
+      [Colors.teal, Colors.teal.withOpacity(0.8)],
+      [Colors.pink, Colors.pink.withOpacity(0.8)],
+    ];
+    
+    return GestureDetector(
+      onTap: () => _navigateToPackDetail(item),
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors[index % gradientColors.length],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      Formatters.formatAmount(40000.00),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '-$discount%',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    SizedBox(width: AppSpacing.sm),
-                    Text(
-                      '50,000.00',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
-                        decoration: TextDecoration.lineThrough,
+                    SizedBox(height: 6),
+                    Flexible(
+                      child: Text(
+                        item['name'] ?? '',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              Formatters.formatAmount(promoPrice),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              Formatters.formatAmount(originalPrice),
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 11,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              SizedBox(width: 8),
+              Flexible(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.school,
+                      color: Colors.white.withOpacity(0.3),
+                      size: 35,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '${item['formations_count'] ?? 0}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      'formations',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 9,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          Icon(
-            Icons.school,
-            color: Colors.white.withOpacity(0.3),
-            size: 80,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -374,267 +551,122 @@ class _StoreScreenState extends State<StoreScreen> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> item) {
+    final isOnPromotion = item['is_on_promotion'] == true;
+    final hasPromoPrice = item['promotion_price'] != null && item['promotion_price'] > 0;
+    final showPromotion = isOnPromotion && hasPromoPrice;
+    
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          if (item['category'] == 'ebooks') {
-            Navigator.pushNamed(context, '/ebooks');
-          } else {
-            _showProductDetails(item);
-          }
-        },
-        child: Container(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: (item['color'] as Color).withOpacity(0.1),
-                ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Icon(
-                        item['icon'] as IconData,
-                        size: 40,
-                        color: item['color'] as Color,
-                      ),
-                    ),
-                    if (item['badge'] != null)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentColor,
-                            borderRadius: BorderRadius.circular(AppBorderRadius.sm),
-                          ),
-                          child: Text(
-                            item['badge'],
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['name'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            item['description'],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (item['price'] > 0)
-                            Text(
-                              Formatters.formatAmount(item['price']),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.accentColor,
-                              ),
-                            )
-                          else
-                            Text(
-                              'Gratuit',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          SizedBox(height: AppSpacing.sm),
-                          Container(
-                            width: double.infinity,
-                            height: 32,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (item['category'] == 'ebooks') {
-                                  Navigator.pushNamed(context, '/ebooks');
-                                } else {
-                                  _addToCart(item);
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                backgroundColor: item['color'] as Color,
-                              ),
-                              child: Text(
-                                item['category'] == 'ebooks' ? 'Accéder' : 'Ajouter',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  void _showProductDetails(Map<String, dynamic> item) {
-    if (item['category'] == 'ebooks') {
-      Navigator.pushNamed(context, '/ebooks');
-      return;
-    }
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppBorderRadius.xl)),
-        ),
+      child: InkWell(
+        onTap: () => _showProductDetails(item),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header avec image/icône
             Container(
-              width: 40,
-              height: 4,
-              margin: EdgeInsets.only(top: AppSpacing.md),
+              height: 100,
+              width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+                color: Colors.purple.withOpacity(0.1),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
+              child: Stack(
+                children: [
+                  Center(
+                    child: Icon(
+                      Icons.school,
+                      size: 40,
+                      color: Colors.purple,
+                    ),
+                  ),
+                  if (showPromotion)
+                    Positioned(
+                      top: 8,
+                      right: 8,
                       child: Container(
-                        width: 100,
-                        height: 100,
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: (item['color'] as Color).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(AppBorderRadius.lg),
-                        ),
-                        child: Icon(
-                          item['icon'] as IconData,
-                          size: 50,
-                          color: item['color'] as Color,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.lg),
-                    Text(
-                      item['name'],
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    Text(
-                      item['description'],
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.lg),
-                    Container(
-                      padding: EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(
-                        color: AppTheme.backgroundColor,
-                        borderRadius: BorderRadius.circular(AppBorderRadius.md),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Prix',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          if (item['price'] > 0)
-                            Text(
-                              Formatters.formatAmount(item['price']),
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.accentColor,
-                              ),
-                            )
-                          else
-                            Text(
-                              'Gratuit',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Spacer(),
-                    Container(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _addToCart(item);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: item['color'] as Color,
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'Ajouter au panier',
-                          style: TextStyle(fontSize: 16),
+                          item['badge'] ?? 'PROMO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
+                    ),
+                ],
+              ),
+            ),
+            // Contenu
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Nom et description
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['name'] ?? '',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '${item['formations_count'] ?? 0} formations',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Prix
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (showPromotion) ...[
+                          Text(
+                            Formatters.formatAmount((item['promotion_price'] ?? 0.0).toDouble()),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                          Text(
+                            Formatters.formatAmount((item['original_price'] ?? 0.0).toDouble()),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ] else
+                          Text(
+                            Formatters.formatAmount((item['price'] ?? 0.0).toDouble()),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -646,20 +678,85 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  void _addToCart(Map<String, dynamic> item) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item['name']} ajouté au panier'),
-        backgroundColor: AppTheme.accentColor,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _showProductDetails(Map<String, dynamic> item) {
+    if (item['category'] == 'ebooks') {
+      Navigator.pushNamed(context, '/ebooks');
+      return;
+    }
+    
+    // Naviguer vers la page de détail du pack
+    _navigateToPackDetail(item);
+  }
+  
+  void _navigateToPackDetail(Map<String, dynamic> item) async {
+    try {
+      // Obtenir les détails complets du pack depuis l'API
+      final packDetails = await StoreService.getPackDetails(item['id'].toString());
+      
+      // Créer un objet FormationPack à partir des données
+      final pack = FormationPack.fromJson(packDetails);
+      
+      // Naviguer vers l'écran de détail
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PackDetailScreen(pack: pack),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error navigating to pack detail: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du chargement des détails du pack'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  void _addToCart(Map<String, dynamic> item) async {
+    try {
+      final response = await FormationService.purchaseFormationPack(item['id']);
+      
+      if (!mounted) return;
+      
+      if (response['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item['name']} acheté avec succès!'),
+            backgroundColor: AppTheme.accentColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Erreur lors de l\'achat'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de l\'achat: $e'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showCart() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Panier - Fonctionnalité bientôt disponible'),
+        content: Text('Panier en cours de développement'),
         backgroundColor: AppTheme.primaryColor,
         behavior: SnackBarBehavior.floating,
       ),

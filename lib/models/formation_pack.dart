@@ -9,6 +9,10 @@ class FormationPack {
   final String? description;
   final String? thumbnailUrl;
   final double price;
+  final double? promotionPrice;
+  final bool isOnPromotion;
+  final DateTime? promotionStartsAt;
+  final DateTime? promotionEndsAt;
   final int totalDuration;
   final double rating;
   final int studentsCount;
@@ -33,6 +37,10 @@ class FormationPack {
     this.description,
     this.thumbnailUrl,
     required this.price,
+    this.promotionPrice,
+    this.isOnPromotion = false,
+    this.promotionStartsAt,
+    this.promotionEndsAt,
     required this.totalDuration,
     required this.rating,
     required this.studentsCount,
@@ -52,6 +60,9 @@ class FormationPack {
 
   // Getter pour completionPercentage (alias de completion_percentage)
   double get completionPercentage => completion_percentage;
+  
+  // Getter pour le prix actuel (promotionnel ou normal)
+  double get currentPrice => (isOnPromotion && promotionPrice != null) ? promotionPrice! : price;
   
   // Méthode pour obtenir l'URL complète de la miniature
   String? get fullThumbnailUrl {
@@ -129,6 +140,16 @@ class FormationPack {
       price: json['price'] is num 
           ? json['price'].toDouble() 
           : (double.tryParse(json['price']?.toString() ?? '0') ?? 0.0),
+      promotionPrice: json['promotion_price'] is num 
+          ? json['promotion_price'].toDouble() 
+          : (json['promotion_price'] != null ? double.tryParse(json['promotion_price']?.toString() ?? '0') : null),
+      isOnPromotion: json['is_on_promotion'] ?? false,
+      promotionStartsAt: json['promotion_starts_at'] != null 
+          ? DateTime.tryParse(json['promotion_starts_at'].toString())
+          : null,
+      promotionEndsAt: json['promotion_ends_at'] != null 
+          ? DateTime.tryParse(json['promotion_ends_at'].toString())
+          : null,
       totalDuration: json['total_duration'] is int 
           ? json['total_duration'] 
           : (int.tryParse(json['total_duration']?.toString() ?? '0') ?? 0),
@@ -170,6 +191,10 @@ class FormationPack {
       'description': description,
       'thumbnail_url': thumbnailUrl,
       'price': price,
+      'promotion_price': promotionPrice,
+      'is_on_promotion': isOnPromotion,
+      'promotion_starts_at': promotionStartsAt?.toIso8601String(),
+      'promotion_ends_at': promotionEndsAt?.toIso8601String(),
       'total_duration': totalDuration,
       'rating': rating,
       'students_count': studentsCount,

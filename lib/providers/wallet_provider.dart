@@ -68,12 +68,12 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> deposit(double amount) async {
+  Future<Map<String, dynamic>> deposit(double amount, {String? phoneNumber}) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final result = await WalletService.deposit(amount);
+      final result = await WalletService.deposit(amount, phoneNumber: phoneNumber);
       if (result['success'] == true) {
         await loadBalance();
         await loadTransactions();
@@ -81,7 +81,7 @@ class WalletProvider extends ChangeNotifier {
       return result;
     } catch (e) {
       print('Erreur lors du dépôt: $e');
-      return {'success': false};
+      return {'success': false, 'message': e.toString()};
     } finally {
       _isLoading = false;
       notifyListeners();
