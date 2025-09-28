@@ -7,6 +7,7 @@ import '../../config/constants.dart';
 import '../../providers/affiliate_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../utils/formatters.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AffiliateDashboard extends StatefulWidget {
   @override
@@ -741,7 +742,8 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildChartStats() {
-    final stats = _getStatsForPeriod();
+    final affiliateProvider = Provider.of<AffiliateProvider>(context, listen: false);
+    final stats = _getStatsForPeriod(affiliateProvider);
     
     return Container(
       padding: EdgeInsets.all(AppSpacing.md),
@@ -766,29 +768,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
                 child: _buildStatItem('Inscriptions', '${stats['inscriptions']}', Icons.person_add),
               ),
               Expanded(
-                child: _buildStatItem('Achats formations', '${stats['achats']}', Icons.shopping_cart),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem('Non-achats', '${stats['nonAchats']}', Icons.cancel),
-              ),
-              Expanded(
-                child: _buildStatItem('Sous-filleuls', '${stats['sousFilleuls']}', Icons.people_outline),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem('Sous-filleuls actifs', '${stats['sousFilleulsActifs']}', Icons.people),
-              ),
-              Expanded(
-                child: Container(), // Espacement
+                child: _buildStatItem('Commissions', Formatters.formatAmount(stats['commissions']?.toDouble() ?? 0.0), Icons.monetization_on),
               ),
             ],
           ),
@@ -826,48 +806,33 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
     );
   }
 
-  Map<String, int> _getStatsForPeriod() {
-    switch (selectedPeriod) {
-      case 'Journalière':
-        return {
-          'inscriptions': 3,
-          'achats': 2,
-          'nonAchats': 1,
-          'sousFilleuls': 1,
-          'sousFilleulsActifs': 1,
-        };
-      case 'Hebdomadaire':
-        return {
-          'inscriptions': 18,
-          'achats': 12,
-          'nonAchats': 6,
-          'sousFilleuls': 5,
-          'sousFilleulsActifs': 3,
-        };
-      case 'Mensuelle':
-        return {
-          'inscriptions': 75,
-          'achats': 45,
-          'nonAchats': 30,
-          'sousFilleuls': 18,
-          'sousFilleulsActifs': 12,
-        };
-      case 'Annuelle':
-        return {
-          'inscriptions': 850,
-          'achats': 520,
-          'nonAchats': 330,
-          'sousFilleuls': 180,
-          'sousFilleulsActifs': 125,
-        };
-      default:
-        return {
-          'inscriptions': 18,
-          'achats': 12,
-          'nonAchats': 6,
-          'sousFilleuls': 5,
-          'sousFilleulsActifs': 3,
-        };
+  Map<String, num> _getStatsForPeriod(AffiliateProvider provider) {
+    final chartData = provider.detailedStats?.chartData;
+    if (chartData == null || chartData['datasets'] == null || (chartData['datasets'] as List).length < 2) {
+      return {
+        'inscriptions': 0,
+        'commissions': 0,
+      };
+    }
+
+    try {
+      final datasets = chartData['datasets'] as List;
+      final commissionsData = (datasets[0]['data'] as List).map((e) => e is num ? e : 0).toList();
+      final signupsData = (datasets[1]['data'] as List).map((e) => e is num ? e : 0).toList();
+
+      final totalCommissions = commissionsData.fold<num>(0, (prev, val) => prev + val);
+      final totalSignups = signupsData.fold<num>(0, (prev, val) => prev + val);
+
+      return {
+        'inscriptions': totalSignups,
+        'commissions': totalCommissions,
+      };
+    } catch (e) {
+      print('Error calculating stats for period: $e');
+      return {
+        'inscriptions': 0,
+        'commissions': 0,
+      };
     }
   }
 
@@ -1601,14 +1566,33 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
     );
   }
 
-  void _downloadBanner(String platform) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Téléchargement de la bannière $platform...'),
-        backgroundColor: AppTheme.accentColor,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  void _downloadBanner(String platform) async {
+    final Map<String, String> bannerPaths = {
+      'Instagram': '/banners/instagram.jpg',
+      'Facebook': '/banners/facebook.jpg',
+      'Twitter': '/banners/twitter.jpg',
+      'Stories': '/banners/story.jpg',
+    };
+
+    final path = bannerPaths[platform];
+    if (path == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bannière non trouvée.')));
+      }
+      return;
+    }
+
+    final url = Uri.parse('${AppConstants.baseUrl}$path');
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Impossible d\'ouvrir l\'URL: $url')),
+        );
+      }
+    }
   }
 
   @override
