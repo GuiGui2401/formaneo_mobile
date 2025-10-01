@@ -1,7 +1,7 @@
 class ApiConfig {
   // URL de base de l'API (à remplacer par votre domaine en production)
-  // static const String baseUrl = 'http://admin.cleanestuaire.com';
-  static const String baseUrl = 'http://192.168.1.135:8001'; // Pour le développement
+  static const String baseUrl = 'http://admin.cleanestuaire.com';
+  //static const String baseUrl = 'http://192.168.1.135:8001'; // Pour le développement
 
   static const String apiVersion = '/api/v1';
 
@@ -15,6 +15,7 @@ class ApiConfig {
   static const String transactionsEndpoint = '$apiVersion/transactions';
   static const String settingsEndpoint = '$apiVersion/settings';
   static const String ebooksEndpoint = '$apiVersion/ebooks';
+  static const String productsEndpoint = '$apiVersion/products';
 
   // Headers
   static Map<String, String> get headers => {

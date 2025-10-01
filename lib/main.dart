@@ -10,6 +10,8 @@ import 'providers/quiz_provider.dart';
 import 'providers/affiliate_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/ebook_provider.dart';
+import 'providers/product_provider.dart';
+import 'providers/cart_provider.dart';
 import 'screens/auth/splash_screen.dart';
 import 'utils/screen_recorder_blocker.dart';
 
@@ -39,6 +41,8 @@ class FormaneoApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AffiliateProvider()),
         ChangeNotifierProvider(create: (_) => WalletProvider()),
         ChangeNotifierProvider(create: (_) => EbookProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => RecentActivityProvider()), // Pour la gestion de l'authentification
       ],
       child: MaterialApp(

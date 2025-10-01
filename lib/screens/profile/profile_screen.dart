@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:formaneo/screens/auth/login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -100,24 +101,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ListTile(
             leading: Icon(Icons.person, color: AppTheme.primaryColor),
             title: Text('Nom'),
-            subtitle: Text(user?.name),
+            subtitle: Text(user?.name ?? 'N/A'),
             contentPadding: EdgeInsets.zero,
           ),
           Divider(),
           ListTile(
             leading: Icon(Icons.email, color: AppTheme.primaryColor),
             title: Text('Email'),
-            subtitle: Text(user?.email),
+            subtitle: Text(user?.email ?? 'N/A'),
             contentPadding: EdgeInsets.zero,
           ),
           Divider(),
           ListTile(
             leading: Icon(Icons.card_membership, color: AppTheme.primaryColor),
             title: Text('Code promo'),
-            subtitle: Text(user?.promoCode),
+            subtitle: Text(user?.promoCode ?? 'N/A'),
             trailing: IconButton(
               icon: Icon(Icons.copy, size: 20),
-              onPressed: () => _copyPromoCode(user?.promoCode),
+              onPressed: () => _copyPromoCode(user?.promoCode ?? ''),
             ),
             contentPadding: EdgeInsets.zero,
           ),
@@ -125,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ListTile(
             leading: Icon(Icons.calendar_today, color: AppTheme.primaryColor),
             title: Text('Membre depuis'),
-            subtitle: Text('Août 2025'),
+            subtitle: Text(user != null ? Formatters.formatDate(user.createdAt) : 'N/A'),
             contentPadding: EdgeInsets.zero,
           ),
         ],
@@ -134,6 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatsSection() {
+    final user = Provider.of<AuthProvider>(context).currentUser;
     return Container(
       padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -154,7 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: _buildStatCard(
                   'Formations',
-                  '0',
+                  user?.metadata?['completed_formations_count']?.toString() ?? '0',
                   Icons.school,
                   Colors.purple,
                 ),
@@ -163,7 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: _buildStatCard(
                   'Quiz réussis',
-                  '0',
+                  user?.passedQuizzes.toString() ?? '0',
                   Icons.quiz,
                   AppTheme.primaryColor,
                 ),
@@ -176,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: _buildStatCard(
                   'Affiliés',
-                  '0',
+                  user?.totalAffiliates.toString() ?? '0',
                   Icons.people,
                   AppTheme.accentColor,
                 ),
@@ -185,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Expanded(
                 child: _buildStatCard(
                   'Certificats',
-                  '0',
+                  '0', // Missing from user model
                   Icons.workspace_premium,
                   Colors.orange,
                 ),
@@ -466,14 +468,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               await authProvider.logout();
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false,
-              );
+              Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (context) => LoginScreen()), (Route<dynamic> route) => false);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.errorColor,

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:formaneo/models/formation_pack.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../utils/formatters.dart';
 import '../../services/store_service.dart';
 import '../../services/formation_service.dart';
-import '../../models/formation_pack.dart';
+import '../../models/product.dart';
+import '../../providers/product_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../formations/pack_detail_screen.dart';
+import '../cart/cart_screen.dart';
 
 class StoreScreen extends StatefulWidget {
   @override
@@ -13,46 +18,24 @@ class StoreScreen extends StatefulWidget {
 
 class _StoreScreenState extends State<StoreScreen> {
   String selectedCategory = 'all';
-  List<Map<String, dynamic>> storeItems = [];
-  bool isLoading = true;
-  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadStoreData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProductProvider>(context, listen: false).loadProducts();
+    });
   }
 
   Future<void> _loadStoreData() async {
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-
-      final items = await StoreService.getStoreItems();
-      
-      // Debug logs
-      print('📦 Total items loaded: ${items.length}');
-      for (var item in items) {
-        print('Item: ${item['name']} - Price: ${item['price']} - Original: ${item['original_price']} - Promo: ${item['is_on_promotion']}');
-      }
-      
-      setState(() {
-        storeItems = items;
-        isLoading = false;
-      });
-    } catch (e) {
-      print('❌ Error loading store data: $e');
-      setState(() {
-        errorMessage = e.toString();
-        isLoading = false;
-      });
-    }
+    await Provider.of<ProductProvider>(context, listen: false).loadProducts();
   }
 
   @override
   Widget build(BuildContext context) {
+    final productProvider = Provider.of<ProductProvider>(context);
+    final cartProvider = Provider.of<CartProvider>(context);
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -63,46 +46,59 @@ class _StoreScreenState extends State<StoreScreen> {
             icon: Stack(
               children: [
                 Icon(Icons.shopping_cart),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: AppTheme.errorColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '2',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
+                if (cartProvider.itemCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: AppTheme.errorColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          cartProvider.itemCount.toString(),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
-            onPressed: _showCart,
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CartScreen()),
+            ),
           ),
         ],
       ),
-      body: isLoading
+      body: productProvider.isLoading
           ? Center(child: CircularProgressIndicator())
-          : errorMessage != null
+          : productProvider.errorMessage != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.error, size: 64, color: AppTheme.errorColor),
                       SizedBox(height: 16),
-                      Text('Erreur de chargement', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Erreur de chargement',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       SizedBox(height: 8),
-                      Text(errorMessage!, textAlign: TextAlign.center),
+                      Text(
+                        productProvider.errorMessage!,
+                        textAlign: TextAlign.center,
+                      ),
                       SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadStoreData,
@@ -119,8 +115,8 @@ class _StoreScreenState extends State<StoreScreen> {
                       children: [
                         _buildHeader(),
                         _buildCategories(),
-                        _buildFeaturedSection(),
-                        _buildProductGrid(),
+                        _buildFeaturedSection(productProvider.products),
+                        _buildProductGrid(productProvider.products),
                         SizedBox(height: AppSpacing.xxl),
                       ],
                     ),
@@ -129,50 +125,35 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  IconData _getIconForCategory(String iconName) {
-    switch (iconName) {
-      case 'apps':
+  IconData _getIconForCategory(String categoryId) {
+    switch (categoryId) {
+      case 'all':
         return Icons.apps;
-      case 'school':
+      case 'formation_pack':
         return Icons.school;
-      case 'quiz':
-        return Icons.quiz;
-      case 'menu_book':
+      case 'ebook':
         return Icons.menu_book;
-      case 'build':
+      case 'tool':
         return Icons.build;
+      case 'template':
+        return Icons.copy_all;
       default:
         return Icons.category;
     }
   }
 
-  Color _getColorForItem(String colorName) {
-    switch (colorName) {
-      case 'purple':
+  Color _getColorForCategory(String categoryId) {
+    switch (categoryId) {
+      case 'formation_pack':
         return Colors.purple;
-      case 'orange':
+      case 'ebook':
         return Colors.orange;
-      case 'teal':
+      case 'tool':
         return Colors.teal;
+      case 'template':
+        return Colors.blueGrey;
       default:
         return AppTheme.primaryColor;
-    }
-  }
-
-  IconData _getIconForItem(String iconName) {
-    switch (iconName) {
-      case 'school':
-        return Icons.school;
-      case 'business':
-        return Icons.business;
-      case 'quiz':
-        return Icons.quiz;
-      case 'rocket_launch':
-        return Icons.rocket_launch;
-      case 'menu_book':
-        return Icons.menu_book;
-      default:
-        return Icons.category;
     }
   }
 
@@ -181,7 +162,10 @@ class _StoreScreenState extends State<StoreScreen> {
       padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
+          colors: [
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withOpacity(0.8),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -248,10 +232,9 @@ class _StoreScreenState extends State<StoreScreen> {
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = selectedCategory == category['id'];
-          final isLocked = category['locked'] == true;
           
           return GestureDetector(
-            onTap: isLocked ? null : () {
+            onTap: () {
               setState(() {
                 selectedCategory = category['id'] as String;
               });
@@ -263,58 +246,33 @@ class _StoreScreenState extends State<StoreScreen> {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: isLocked 
-                    ? Colors.grey[100]
-                    : (isSelected ? AppTheme.primaryColor : Colors.white),
+                color: isSelected ? AppTheme.primaryColor : Colors.white,
                 borderRadius: BorderRadius.circular(AppBorderRadius.lg),
                 border: Border.all(
-                  color: isLocked 
-                      ? Colors.grey[300]!
-                      : (isSelected ? AppTheme.primaryColor : Color(0xFFE2E8F0)),
+                  color: isSelected
+                      ? AppTheme.primaryColor
+                      : Color(0xFFE2E8F0),
                 ),
               ),
-              child: Stack(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _getIconForCategory(category['icon'] as String),
-                        color: isLocked 
-                            ? Colors.grey[400]
-                            : (isSelected ? Colors.white : AppTheme.textSecondary),
-                        size: 24,
-                      ),
-                      SizedBox(height: AppSpacing.sm),
-                      Text(
-                        category['name'] as String,
-                        style: TextStyle(
-                          color: isLocked 
-                              ? Colors.grey[500]
-                              : (isSelected ? Colors.white : AppTheme.textSecondary),
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    _getIconForCategory(category['id'] as String),
+                    color: isSelected ? Colors.white : AppTheme.textSecondary,
+                    size: 24,
                   ),
-                  if (isLocked)
-                    Positioned(
-                      top: 2,
-                      right: 2,
-                      child: Container(
-                        padding: EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[600],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white,
-                          size: 10,
-                        ),
-                      ),
+                  SizedBox(height: AppSpacing.sm),
+                  Text(
+                    category['name'] as String,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AppTheme.textSecondary,
+                      fontSize: 12,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -324,12 +282,11 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  Widget _buildFeaturedSection() {
-    // Find only items with active promotion
-    final promotedItems = storeItems.where((item) {
-      final isOnPromotion = item['is_on_promotion'] == true;
-      final hasPromoPrice = item['promotion_price'] != null && item['promotion_price'] > 0;
-      return isOnPromotion && hasPromoPrice;
+  Widget _buildFeaturedSection(List<Product> products) {
+    final promotedItems = products.where((product) {
+      return product.isOnPromotion &&
+          product.promotionPrice != null &&
+          product.promotionPrice! > 0;
     }).toList();
 
     print('🎯 Found ${promotedItems.length} items with active promotions');
@@ -361,19 +318,21 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-
-  Widget _buildPromoCarousel(List<Map<String, dynamic>> promotedItems) {
+  Widget _buildPromoCarousel(List<Product> promotedItems) {
     return PageView.builder(
       controller: PageController(viewportFraction: 0.9),
       itemCount: promotedItems.length,
-      itemBuilder: (context, index) => _buildPromoCard(promotedItems[index], index),
+      itemBuilder: (context, index) => _buildPromoCard(
+        promotedItems[index],
+        index,
+      ),
     );
   }
 
-  Widget _buildPromoCard(Map<String, dynamic> item, int index) {
-    final originalPrice = (item['original_price'] ?? 0.0).toDouble();
-    final promoPrice = (item['promotion_price'] ?? 0.0).toDouble();
-    final discount = originalPrice > 0 
+  Widget _buildPromoCard(Product product, int index) {
+    final originalPrice = product.price;
+    final promoPrice = product.promotionPrice ?? product.price;
+    final discount = originalPrice > 0
         ? (((originalPrice - promoPrice) / originalPrice) * 100).round()
         : 0;
     
@@ -385,7 +344,7 @@ class _StoreScreenState extends State<StoreScreen> {
     ];
     
     return GestureDetector(
-      onTap: () => _navigateToPackDetail(item),
+      onTap: () => _showProductDetails(product),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: BoxDecoration(
@@ -433,7 +392,7 @@ class _StoreScreenState extends State<StoreScreen> {
                     SizedBox(height: 6),
                     Flexible(
                       child: Text(
-                        item['name'] ?? '',
+                        product.name,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 15,
@@ -484,13 +443,13 @@ class _StoreScreenState extends State<StoreScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.school,
+                      _getIconForCategory(product.category),
                       color: Colors.white.withOpacity(0.3),
                       size: 35,
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '${item['formations_count'] ?? 0}',
+                      product.metadata?['formations_count']?.toString() ?? '',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 11,
@@ -499,7 +458,7 @@ class _StoreScreenState extends State<StoreScreen> {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      'formations',
+                      product.category == 'formation_pack' ? 'formations' : '',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.8),
                         fontSize: 9,
@@ -516,10 +475,10 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  Widget _buildProductGrid() {
+  Widget _buildProductGrid(List<Product> products) {
     final filteredItems = selectedCategory == 'all'
-        ? storeItems
-        : storeItems.where((item) => item['category'] == selectedCategory).toList();
+        ? products
+        : products.where((product) => product.category == selectedCategory).toList();
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -550,10 +509,10 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> item) {
-    final isOnPromotion = item['is_on_promotion'] == true;
-    final hasPromoPrice = item['promotion_price'] != null && item['promotion_price'] > 0;
-    final showPromotion = isOnPromotion && hasPromoPrice;
+  Widget _buildProductCard(Product product) {
+    final showPromotion = product.isOnPromotion &&
+        product.promotionPrice != null &&
+        product.promotionPrice! > 0;
     
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -562,26 +521,32 @@ class _StoreScreenState extends State<StoreScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: () => _showProductDetails(item),
+        onTap: () => _showProductDetails(product),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header avec image/icône
             Container(
               height: 100,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.1),
+                color: _getColorForCategory(product.category).withOpacity(0.1),
+                image: product.imageUrl != null && product.imageUrl!.isNotEmpty
+                    ? DecorationImage(
+                        image: NetworkImage(product.imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
               child: Stack(
                 children: [
-                  Center(
-                    child: Icon(
-                      Icons.school,
-                      size: 40,
-                      color: Colors.purple,
+                  if (product.imageUrl == null || product.imageUrl!.isEmpty)
+                    Center(
+                      child: Icon(
+                        _getIconForCategory(product.category),
+                        size: 40,
+                        color: _getColorForCategory(product.category),
+                      ),
                     ),
-                  ),
                   if (showPromotion)
                     Positioned(
                       top: 8,
@@ -593,7 +558,7 @@ class _StoreScreenState extends State<StoreScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          item['badge'] ?? 'PROMO',
+                          product.metadata?['badge'] ?? 'PROMO',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 9,
@@ -605,7 +570,6 @@ class _StoreScreenState extends State<StoreScreen> {
                 ],
               ),
             ),
-            // Contenu
             Expanded(
               child: Padding(
                 padding: EdgeInsets.all(12),
@@ -613,12 +577,11 @@ class _StoreScreenState extends State<StoreScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Nom et description
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['name'] ?? '',
+                          product.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -627,22 +590,22 @@ class _StoreScreenState extends State<StoreScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 4),
-                        Text(
-                          '${item['formations_count'] ?? 0} formations',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textSecondary,
+                        if (product.category == 'formation_pack')
+                          Text(
+                            '${product.metadata?['formations_count'] ?? 0} formations',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                    // Prix
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (showPromotion) ...[
                           Text(
-                            Formatters.formatAmount((item['promotion_price'] ?? 0.0).toDouble()),
+                            Formatters.formatAmount(product.promotionPrice!),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -650,7 +613,7 @@ class _StoreScreenState extends State<StoreScreen> {
                             ),
                           ),
                           Text(
-                            Formatters.formatAmount((item['original_price'] ?? 0.0).toDouble()),
+                            Formatters.formatAmount(product.price),
                             style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary,
@@ -659,7 +622,7 @@ class _StoreScreenState extends State<StoreScreen> {
                           ),
                         ] else
                           Text(
-                            Formatters.formatAmount((item['price'] ?? 0.0).toDouble()),
+                            Formatters.formatAmount(product.price),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -678,87 +641,68 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  void _showProductDetails(Map<String, dynamic> item) {
-    if (item['category'] == 'ebooks') {
-      Navigator.pushNamed(context, '/ebooks');
+  void _showProductDetails(Product product) async {
+    if (product.category == 'ebook') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Détails Ebook: ${product.name}'),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
       return;
     }
     
-    // Naviguer vers la page de détail du pack
-    _navigateToPackDetail(item);
-  }
-  
-  void _navigateToPackDetail(Map<String, dynamic> item) async {
-    try {
-      // Obtenir les détails complets du pack depuis l'API
-      final packDetails = await StoreService.getPackDetails(item['id'].toString());
-      
-      // Créer un objet FormationPack à partir des données
-      final pack = FormationPack.fromJson(packDetails);
-      
-      // Naviguer vers l'écran de détail
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PackDetailScreen(pack: pack),
-          ),
+    if (product.category == 'formation_pack') {
+      try {
+        final pack = FormationPack(
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          author: product.metadata?['author'] ?? 'N/A',
+          description: product.description,
+          thumbnailUrl: product.imageUrl,
+          price: product.price,
+          promotionPrice: product.promotionPrice,
+          isOnPromotion: product.isOnPromotion,
+          totalDuration: product.metadata?['total_duration'] ?? 0,
+          rating: product.metadata?['rating']?.toDouble() ?? 0.0,
+          studentsCount: product.metadata?['students_count'] ?? 0,
+          formationsCount: product.metadata?['formations_count'] ?? 0,
+          isFeatured: product.metadata?['is_featured'] ?? false,
+          isActive: product.isActive,
+          order: product.metadata?['order'] ?? 0,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+          formations: [],
+          isPurchased: false,
         );
+        
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PackDetailScreen(pack: pack),
+            ),
+          );
+        }
+      } catch (e) {
+        print('❌ Error navigating to pack detail: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur lors du chargement des détails du pack'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
       }
-    } catch (e) {
-      print('❌ Error navigating to pack detail: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors du chargement des détails du pack'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
+      return;
     }
-  }
 
-  void _addToCart(Map<String, dynamic> item) async {
-    try {
-      final response = await FormationService.purchaseFormationPack(item['id']);
-      
-      if (!mounted) return;
-      
-      if (response['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${item['name']} acheté avec succès!'),
-            backgroundColor: AppTheme.accentColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Erreur lors de l\'achat'),
-            backgroundColor: AppTheme.errorColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'achat: $e'),
-          backgroundColor: AppTheme.errorColor,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showCart() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Panier en cours de développement'),
+        content: Text('Détails Produit: ${product.name} (Catégorie: ${product.category})'),
         backgroundColor: AppTheme.primaryColor,
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }

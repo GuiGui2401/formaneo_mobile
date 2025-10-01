@@ -402,7 +402,7 @@ class _WalletScreenState extends State<WalletScreen> with WidgetsBindingObserver
               Expanded(
                 child: _buildStatCard(
                   'Gains totaux',
-                  Formatters.formatAmount(115566.00),
+                  Formatters.formatAmount(provider.totalEarned),
                   Icons.trending_up,
                   AppTheme.accentColor,
                 ),
@@ -411,7 +411,7 @@ class _WalletScreenState extends State<WalletScreen> with WidgetsBindingObserver
               Expanded(
                 child: _buildStatCard(
                   'Retraits',
-                  Formatters.formatAmount(15566.00),
+                  Formatters.formatAmount(provider.pendingWithdrawals),
                   Icons.download,
                   Colors.orange,
                 ),
@@ -424,7 +424,7 @@ class _WalletScreenState extends State<WalletScreen> with WidgetsBindingObserver
               Expanded(
                 child: _buildStatCard(
                   'Commissions',
-                  Formatters.formatAmount(51660.00),
+                  Formatters.formatAmount(provider.totalCommissions),
                   Icons.people,
                   AppTheme.primaryColor,
                 ),
@@ -433,7 +433,7 @@ class _WalletScreenState extends State<WalletScreen> with WidgetsBindingObserver
               Expanded(
                 child: _buildStatCard(
                   'Quiz & Bonus',
-                  Formatters.formatAmount(3600.00),
+                  Formatters.formatAmount(provider.totalQuizAndBonus),
                   Icons.card_giftcard,
                   Colors.purple,
                 ),

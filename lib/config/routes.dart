@@ -10,6 +10,7 @@ import '../screens/wallet/wallet_screen.dart';
 import '../screens/store/store_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/ebooks/ebooks_screen.dart';
+import '../screens/cart/cart_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -25,6 +26,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String ebooks = '/ebooks';
   static const String transactions = '/transactions';
+  static const String cart = '/cart';
 
   static Map<String, WidgetBuilder> get routes {
     return {
@@ -39,6 +41,7 @@ class AppRoutes {
       store: (context) => StoreScreen(),
       profile: (context) => ProfileScreen(),
       ebooks: (context) => EbooksScreen(),
+      cart: (context) => CartScreen(),
     };
   }
 }

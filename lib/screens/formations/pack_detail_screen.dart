@@ -346,14 +346,18 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.star, color: AppTheme.accentColor),
+                    Icon(Icons.star, color: AppTheme.accentColor, size: 20),
                     SizedBox(width: 8),
-                    Text(
-                      '15% de cashback à chaque formation terminée',
-                      style: TextStyle(
-                        color: AppTheme.accentColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                    Expanded(
+                      child: Text(
+                        '15% de cashback à chaque formation terminée',
+                        style: TextStyle(
+                          color: AppTheme.accentColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -363,11 +367,15 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
                   children: [
                     Icon(Icons.security, color: AppTheme.accentColor, size: 16),
                     SizedBox(width: 8),
-                    Text(
-                      'Accès à vie • Certificats • Support inclus',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
+                    Expanded(
+                      child: Text(
+                        'Accès à vie • Certificats • Support inclus',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -607,13 +615,13 @@ class _PackDetailScreenState extends State<PackDetailScreen> {
               // Image de fond ou gradient
               Container(
                 decoration: BoxDecoration(
-                  image: formation.thumbnailUrl != null && formation.thumbnailUrl!.isNotEmpty
+                  image: formation.fullThumbnailUrl != null && formation.fullThumbnailUrl!.isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(formation.thumbnailUrl!),
+                          image: NetworkImage(formation.fullThumbnailUrl!),
                           fit: BoxFit.cover,
                         )
                       : null,
-                  gradient: formation.thumbnailUrl == null || formation.thumbnailUrl!.isEmpty
+                  gradient: formation.fullThumbnailUrl == null || formation.fullThumbnailUrl!.isEmpty
                       ? LinearGradient(
                           colors: _getFormationGradientColors(formation.title, number),
                           begin: Alignment.topLeft,

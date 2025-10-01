@@ -320,48 +320,97 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildHeaderStats(AffiliateProvider provider) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - AppSpacing.md) / 2;
-        final cardHeight = cardWidth * 0.7;
-        
-        return GridView.count(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: AppSpacing.md,
-          crossAxisSpacing: AppSpacing.md,
-          childAspectRatio: cardWidth / cardHeight,
-          children: [
-            _buildStatCard(
-              title: 'Aujourd\'hui',
-              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'today')),
-              color: AppTheme.primaryColor,
-              icon: Icons.today,
+    // Calculer les stats du mois passé
+    final lastMonthSignups = _getSafeInt(provider.stats, 'lastMonthSignups');
+    final lastMonthEarnings = _getSafeDouble(provider.earnings, 'lastMonth');
+
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final cardWidth = (constraints.maxWidth - AppSpacing.md) / 2;
+            final cardHeight = cardWidth * 0.7;
+
+            return GridView.count(
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              childAspectRatio: cardWidth / cardHeight,
+              children: [
+                _buildStatCard(
+                  title: 'Aujourd\'hui',
+                  amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'today')),
+                  color: AppTheme.primaryColor,
+                  icon: Icons.today,
+                ),
+                _buildStatCard(
+                  title: 'Hier',
+                  amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'yesterday')),
+                  color: Colors.orange,
+                  icon: Icons.history,
+                ),
+                _buildStatCard(
+                  title: 'Mois en cours',
+                  amount: Formatters.formatAmount(
+                    _getSafeDouble(provider.earnings, 'currentMonth'),
+                  ),
+                  color: AppTheme.accentColor,
+                  icon: Icons.calendar_month,
+                ),
+                _buildStatCard(
+                  title: 'Mois dernier',
+                  amount: Formatters.formatAmount(lastMonthEarnings),
+                  color: AppTheme.secondaryColor,
+                  icon: Icons.calendar_today,
+                ),
+              ],
+            );
+          },
+        ),
+        // Résumé du mois passé
+        if (lastMonthSignups > 0 || lastMonthEarnings > 0) ...[
+          SizedBox(height: AppSpacing.md),
+          Container(
+            padding: EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppBorderRadius.lg),
+              border: Border.all(color: Color(0xFFE2E8F0)),
             ),
-            _buildStatCard(
-              title: 'Hier',
-              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'yesterday')),
-              color: Colors.orange,
-              icon: Icons.history,
+            child: Row(
+              children: [
+                Icon(Icons.insights, color: AppTheme.secondaryColor),
+                SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Statistiques du mois passé',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '$lastMonthSignups inscription${lastMonthSignups > 1 ? 's' : ''} • ${Formatters.formatAmount(lastMonthEarnings)} gagnés',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _buildStatCard(
-              title: 'Mois en cours',
-              amount: Formatters.formatAmount(
-                _getSafeDouble(provider.earnings, 'currentMonth'),
-              ),
-              color: AppTheme.accentColor,
-              icon: Icons.calendar_month,
-            ),
-            _buildStatCard(
-              title: 'Mois dernier',
-              amount: Formatters.formatAmount(_getSafeDouble(provider.earnings, 'lastMonth')),
-              color: AppTheme.secondaryColor,
-              icon: Icons.calendar_today,
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ],
     );
   }
 
@@ -431,7 +480,15 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
   }
 
   Widget _buildTotalCommissionCard(AffiliateProvider provider) {
-    final affiliateCount = _getSafeInt(provider.stats, 'totalAffiliates');
+    // Calculer le total d'affiliés en prenant le max entre totalAffiliates et la longueur de la liste
+    final totalAffiliatesFromStats = _getSafeInt(provider.stats, 'totalAffiliates');
+    final totalAffiliatesFromList = provider.affiliateData?.affiliatesList.length ?? 0;
+    final monthlyAffiliates = _getSafeInt(provider.stats, 'monthlyAffiliates');
+
+    // Prendre le maximum pour le total (en incluant aussi monthlyAffiliates)
+    final affiliateCount = [totalAffiliatesFromStats, totalAffiliatesFromList, monthlyAffiliates]
+        .reduce((a, b) => a > b ? a : b);
+
     final commissionRate = affiliateCount > 100
         ? AppConstants.level1CommissionPremium
         : AppConstants.level1CommissionBasic;
@@ -517,7 +574,7 @@ class _AffiliateDashboardState extends State<AffiliateDashboard> {
               ),
               _buildMiniStat(
                 'Ce mois',
-                '${_getSafeInt(provider.stats, 'monthlyAffiliates')}',
+                '$monthlyAffiliates',
               ),
               Container(
                 width: 1,

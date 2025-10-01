@@ -68,7 +68,7 @@ class _FormationPacksScreenState extends State<FormationPacksScreen> {
         slivers: [
           // App Bar moderne avec dégradé
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 200,
             floating: false,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
@@ -120,7 +120,7 @@ class _FormationPacksScreenState extends State<FormationPacksScreen> {
                     ),
                     // Contenu
                     Positioned(
-                      bottom: 80,
+                      bottom: 20,
                       left: 20,
                       right: 20,
                       child: Column(
@@ -128,24 +128,26 @@ class _FormationPacksScreenState extends State<FormationPacksScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.school, color: Colors.white, size: 32),
-                              SizedBox(width: 16),
-                              Text(
-                                'Formations Premium',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                              Icon(Icons.school, color: Colors.white, size: 28),
+                              SizedBox(width: 12),
+                              Flexible(
+                                child: Text(
+                                  'Formations Premium',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
+                          SizedBox(height: 6),
                           Text(
                             'Accédez à des packs complets avec 15% de cashback',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -155,45 +157,46 @@ class _FormationPacksScreenState extends State<FormationPacksScreen> {
                 ),
               ),
             ),
-            // Barre de recherche
-            bottom: PreferredSize(
-              preferredSize: Size.fromHeight(70),
+          ),
+
+          // Barre de recherche séparée
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              color: AppTheme.backgroundColor,
               child: Container(
-                padding: EdgeInsets.all(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher un pack de formation...',
-                      prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear, color: AppTheme.textSecondary),
-                              onPressed: () {
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
                     ),
+                  ],
+                ),
+                child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher un pack de formation...',
+                    prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: AppTheme.textSecondary),
+                            onPressed: () {
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   ),
                 ),
               ),
@@ -272,30 +275,39 @@ class _FormationPacksScreenState extends State<FormationPacksScreen> {
     required Color color,
   }) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 24),
-          SizedBox(height: 8),
+          Icon(icon, color: color, size: 22),
+          SizedBox(height: 6),
           Text(
             title,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: color,
-              fontSize: 14,
+              fontSize: 13,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+          SizedBox(height: 2),
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               color: AppTheme.textSecondary,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
